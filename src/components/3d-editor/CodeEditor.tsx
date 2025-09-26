@@ -24,8 +24,8 @@ export const CodeEditor = () => {
       inherit: true,
       rules: [],
       colors: {
-        'editor.background': 'hsl(var(--code-editor-bg))',
-        'editor.selectionBackground': 'hsl(var(--code-editor-selection))',
+        'editor.background': '#1a1e2e',
+        'editor.selectionBackground': '#0066cc33',
       }
     });
     
