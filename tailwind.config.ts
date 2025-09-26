@@ -57,6 +57,32 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Editor-specific colors
+        editor: {
+          panel: "hsl(var(--editor-panel))",
+          border: "hsl(var(--editor-panel-border))",
+          toolbar: "hsl(var(--editor-toolbar))",
+          selection: "hsl(var(--editor-selection))",
+          hover: "hsl(var(--editor-hover))",
+          active: "hsl(var(--editor-active))",
+        },
+        viewport: {
+          bg: "hsl(var(--viewport-bg))",
+          grid: "hsl(var(--viewport-grid))",
+          'axis-x': "hsl(var(--viewport-axis-x))",
+          'axis-y': "hsl(var(--viewport-axis-y))",
+          'axis-z': "hsl(var(--viewport-axis-z))",
+        },
+        success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
+        error: "hsl(var(--error))",
+      },
+      fontFamily: {
+        mono: "var(--font-mono)",
+      },
+      transitionTimingFunction: {
+        smooth: "var(--transition-smooth)",
+        fast: "var(--transition-fast)",
       },
       borderRadius: {
         lg: "var(--radius)",
