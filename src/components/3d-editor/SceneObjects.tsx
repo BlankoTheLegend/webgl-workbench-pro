@@ -1,11 +1,58 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { TransformControls } from '@react-three/drei';
 import { useEditorStore } from '../../store/editorStore';
+import { GameEngine } from '../../lib/gameEngine/GameAPI';
 import * as THREE from 'three';
 
+// Global game engine instance
+let gameEngine: GameEngine | null = null;
+
 export const SceneObjects = () => {
-  const { objects, selectedObject, selectObject, updateObject, transformMode, isPlaying } = useEditorStore();
+  const { objects, selectedObject, selectObject, updateObject, transformMode, isPlaying, globalScript } = useEditorStore();
+
+  // Initialize game engine
+  useEffect(() => {
+    if (!gameEngine) {
+      gameEngine = new GameEngine();
+    }
+
+    // Update objects in game engine
+    gameEngine.setObjects(objects);
+
+    // Setup global script
+    if (globalScript && isPlaying) {
+      try {
+        const api = gameEngine.createAPI();
+        const globalFunction = new Function('engine', 'scene', 'input', 'gui', 'time', 'delta', globalScript);
+        
+        // Execute global script setup
+        globalFunction(api.engine, api.scene, api.input, api.gui, 0, 0);
+        
+        // Set scene callbacks if defined
+        gameEngine.setSceneCallbacks({
+          onStart: (globalFunction as any).onStart,
+          onUpdate: (globalFunction as any).onUpdate,
+        });
+      } catch (error) {
+        console.warn('Global script error:', error);
+      }
+    }
+
+    return () => {
+      if (gameEngine && !isPlaying) {
+        gameEngine.dispose();
+        gameEngine = null;
+      }
+    };
+  }, [objects, isPlaying, globalScript]);
+
+  // Update game engine
+  useFrame((state, delta) => {
+    if (gameEngine && isPlaying) {
+      gameEngine.update(delta, state.clock.elapsedTime);
+    }
+  });
 
   return (
     <group>
@@ -16,6 +63,7 @@ export const SceneObjects = () => {
           isSelected={selectedObject?.id === object.id}
           transformMode={transformMode}
           isPlaying={isPlaying}
+          gameEngine={gameEngine}
           onSelect={() => selectObject(object)}
           onTransform={(newTransform) => updateObject(object.id, newTransform)}
         />
@@ -29,20 +77,56 @@ interface SceneObjectProps {
   isSelected: boolean;
   transformMode: string;
   isPlaying: boolean;
+  gameEngine: GameEngine | null;
   onSelect: () => void;
   onTransform: (transform: any) => void;
 }
 
-const SceneObject = ({ object, isSelected, transformMode, isPlaying, onSelect, onTransform }: SceneObjectProps) => {
+const SceneObject = ({ object, isSelected, transformMode, isPlaying, gameEngine, onSelect, onTransform }: SceneObjectProps) => {
   const meshRef = useRef<THREE.Mesh>(null);
+  const objectAPI = useRef<any>(null);
 
-  // Handle object animations during play mode
+  // Setup object event handlers and API
+  useEffect(() => {
+    if (gameEngine && meshRef.current) {
+      // Register object with message manager
+      gameEngine['messageManager']?.registerObject(object.id, object.tags || []);
+      
+      // Create object API wrapper with event handlers
+      objectAPI.current = {
+        ...object,
+        animate: (options: any) => gameEngine['animationManager']?.animate(meshRef.current, options),
+        animateSequence: (sequence: any[]) => gameEngine['animationManager']?.animateSequence(meshRef.current, sequence),
+        onClick: null,
+        onHoverEnter: null,
+        onHoverExit: null,
+        onMessage: null,
+      };
+    }
+  }, [object.id, gameEngine]);
+
+  // Handle object animations and scripts during play mode
   useFrame((state, delta) => {
-    if (isPlaying && meshRef.current && object.script) {
+    if (isPlaying && meshRef.current && gameEngine && object.script) {
       try {
-        // Execute object script during play mode
-        const scriptFunction = new Function('object', 'mesh', 'delta', 'time', object.script);
-        scriptFunction(object, meshRef.current, delta, state.clock.elapsedTime);
+        // Create comprehensive API for the script
+        const api = gameEngine.createAPI(objectAPI.current, meshRef.current, state.clock.elapsedTime, delta);
+        
+        // Execute object script with full API
+        const scriptFunction = new Function(
+          'object', 'mesh', 'delta', 'time', 'engine', 'scene', 'input', 'gui',
+          object.script
+        );
+        scriptFunction(
+          api.object, 
+          api.mesh, 
+          api.delta, 
+          api.time, 
+          api.engine, 
+          api.scene, 
+          api.input, 
+          api.gui
+        );
       } catch (error) {
         console.warn('Script execution error:', error);
       }
@@ -83,6 +167,21 @@ const SceneObject = ({ object, isSelected, transformMode, isPlaying, onSelect, o
         onClick={(e) => {
           e.stopPropagation();
           onSelect();
+          
+          // Trigger object's onClick handler if in play mode
+          if (isPlaying && objectAPI.current?.onClick) {
+            objectAPI.current.onClick();
+          }
+        }}
+        onPointerEnter={(e) => {
+          if (isPlaying && objectAPI.current?.onHoverEnter) {
+            objectAPI.current.onHoverEnter();
+          }
+        }}
+        onPointerLeave={(e) => {
+          if (isPlaying && objectAPI.current?.onHoverExit) {
+            objectAPI.current.onHoverExit();
+          }
         }}
         castShadow
         receiveShadow

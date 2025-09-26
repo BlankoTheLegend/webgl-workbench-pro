@@ -4,6 +4,7 @@ import { SceneViewport } from './SceneViewport';
 import { SceneHierarchy } from './SceneHierarchy';
 import { PropertiesPanel } from './PropertiesPanel';
 import { CodeEditor } from './CodeEditor';
+import { DynamicGUI } from './DynamicGUI';
 import { useEditorStore } from '../../store/editorStore';
 
 export const EditorLayout = () => {
@@ -32,15 +33,23 @@ export const EditorLayout = () => {
           <SceneViewport />
         </div>
 
-        {/* Right Panel - Properties */}
+        {/* Right Panel - Properties & GUI */}
         <div className="w-80 bg-editor-panel border-l border-editor-border flex flex-col">
-          <div className="p-3 border-b border-editor-border">
-            <h2 className="text-sm font-semibold text-foreground">
-              {selectedObject ? `Properties - ${selectedObject.name}` : 'Properties'}
-            </h2>
+          {/* Properties Section */}
+          <div className="h-1/2 border-b border-editor-border">
+            <div className="p-3 border-b border-editor-border">
+              <h2 className="text-sm font-semibold text-foreground">
+                {selectedObject ? `Properties - ${selectedObject.name}` : 'Properties'}
+              </h2>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <PropertiesPanel />
+            </div>
           </div>
-          <div className="flex-1 overflow-auto">
-            <PropertiesPanel />
+          
+          {/* Dynamic GUI Section */}
+          <div className="h-1/2 p-2 overflow-y-auto">
+            <DynamicGUI />
           </div>
         </div>
       </div>
